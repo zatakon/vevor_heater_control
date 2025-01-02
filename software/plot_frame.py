@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import csv
 import math
 import matplotlib.pyplot as plt
 from statistics import mean, stdev
@@ -14,6 +13,11 @@ from typing import List
 @dataclass
 class Frame:
     payload: bytes
+
+@dataclass
+class Cycle:
+    request: Frame
+    response: Frame
 
 @dataclass
 class Stats:
@@ -61,65 +65,74 @@ def compute_stats(values: List[int]) -> Stats:
 ################################################################################
 
 def main():
-    # Change this to your CSV name or path
-    csv_filename = "frames_other.csv"
+    # Change this to your TXT name or path
+    txt_filename = "docs/communication/log_start_running_stop.txt"
 
-    # List to store all frames in order
-    frames: List[Frame] = []
+    # List to store all cycles in order
+    cycles: List[Cycle] = []
 
     ########################################################################
-    # 1) Load CSV, filter frames
+    # 1) Load TXT, filter and associate frames
     ########################################################################
-    with open(csv_filename, newline='') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) < 2:
-                continue
-            hex_data = row[1].strip()
-            if not hex_data:
-                continue
-
-            try:
-                frame = hexstr_to_bytes(hex_data)
-            except ValueError:
-                # Skip lines with invalid hex data
-                continue
-
-            # Must start with AA 77 => heater->controller
-            if len(frame) >= 8 and frame[0] == 0xAA and frame[1] == 0x77:
-                # Extract the "payload" after the first 8 bytes
-                # If you want the full frame as payload, uncomment the next line
-                # payload = frame
-                # Otherwise, extract payload after first 8 bytes
-                payload = frame
-                frames.append(Frame(payload=payload))
-
-    if not frames:
-        print("No AA 77 frames found! Check your CSV or filters.")
+    try:
+        with open(txt_filename, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"File {txt_filename} not found!")
         return
 
-    # Filter out frames where payload is all zeros
-    original_length = len(frames)
-    frames = [frame for frame in frames if any(byte != 0 for byte in frame.payload)]
-    filtered_length = len(frames)
-    print(f"Filtered out {original_length - filtered_length} frames with all-zero payloads.")
+    # Ensure that the number of lines is even (pairs of request and response)
+    if len(lines) % 2 != 0:
+        print("Warning: The number of lines in the TXT file is not even. "
+              "The last line will be ignored.")
 
-    if not frames:
-        print("No non-zero payload frames found after filtering!")
+    # Process lines in pairs
+    for i in range(0, len(lines) - 1, 2):
+        request_line = lines[i].strip()
+        response_line = lines[i + 1].strip()
+
+        try:
+            request_bytes = hexstr_to_bytes(request_line)
+            response_bytes = hexstr_to_bytes(response_line)
+        except ValueError:
+            # Skip pairs with invalid hex data
+            print(f"Skipping invalid pair at lines {i+1} and {i+2}.")
+            continue
+
+        # Create Frame objects for request and response
+        request_frame = Frame(payload=request_bytes)
+        response_frame = Frame(payload=response_bytes)
+
+        # Append as a Cycle
+        cycles.append(Cycle(request=request_frame, response=response_frame))
+
+    if not cycles:
+        print("No valid frame pairs found! Check your TXT file.")
+        return
+
+    # Filter out cycles where response payload is all zeros
+    original_length = len(cycles)
+    cycles = [cycle for cycle in cycles if any(byte != 0 for byte in cycle.response.payload)]
+    filtered_length = len(cycles)
+    print(f"Filtered out {original_length - filtered_length} frame pairs with all-zero response payloads.")
+
+    if not cycles:
+        print("No non-zero response payload frame pairs found after filtering!")
         return
 
     ########################################################################
     # 2) Basic stats for single bytes and 16-bit pairs
     ########################################################################
     # Determine the maximum payload length
-    max_len = max(len(frame.payload) for frame in frames)
+    max_len = max(len(cycle.response.payload) for cycle in cycles)
 
     # Initialize lists for single bytes and 16-bit pairs
     single_bytes: List[List[int]] = [[] for _ in range(max_len)]
     pairs_16: List[List[int]] = [[] for _ in range(max_len - 1)]
 
-    # Populate the lists
-    for frame in frames:
+    # Populate the lists with response payloads
+    for cycle in cycles:
+        frame = cycle.response
         plen = len(frame.payload)
         for i in range(plen):
             single_bytes[i].append(frame.payload[i])
@@ -160,134 +173,141 @@ def main():
     if max_len >= 4:
         stt = pairs_16_stats[1]  # Pair [2-3]
         if stt.count > 0 and stt.min >= 0 and stt.max < 1000:
-            print(f"Likely Temperature at pair [2-3], range {stt.min}..{stt.max} => {stv.min/10.0:.1f}..{stv.max/10.0:.1f} °C")
+            print(f"Likely Temperature at pair [2-3], range {stt.min}..{stt.max} => {stt.min/10.0:.1f}..{stt.max/10.0:.1f} °C")
 
     ########################################################################
     # 4) Plotting Statistics and Data
     ########################################################################
     print("\nPlotting data and statistics... Close plots to end.\n")
 
-    frame_ids = list(range(len(frames)))
+    frame_ids = list(range(len(cycles)))
 
     # Define the offsets to exclude from plotting
-    # 0:  identifier 0xAA
-    # 1:  device ID (controller 0x66, heater 0x77)
-    # 2:  command? every time 0x02
-    # 3:  length field (0x0B for controller->heater, 0x33 for heater->controller)
-    # 4:  heater enable?
-    # 5:  state (0x00: off, 0x01: glowing, 0x02: heating, 0x03: stable combustion, 0x04: cooling)
-    # 6:  power level (0x00..0x0A)
-    # 7:  0x00
-    # 8:  0x03 if running, 0x00 if stopped
-    # 9:  0xFB if running, 0x00 if stopped
-    # 10: 0x00
-    # 11: 153-158 (input voltage*10)
-    # 12: 0x00
-    # 13: 0-12 (glow plug? Input current?)
-    # 14: 0-1
-    # 15: 0-21: some temperature?
-    # 16-17: 480,1630 (chamber temperature * 100)
-    # 18: 0x00
-    # 19: 0x00
-    # 20: 0-1
-    # 21: 0-255
-    # 22: 0x00
-    # 23: 0-51
-    # 24: 0-66
-    # 25: 0-86
-    # 26: 0-56
-    # 27: 0-12
-    # 28: 0-17
-    # 29: 0-255
-    # 30-45: 0x00
-    # 46: 35
-    # 47: 4
-    # 48: 17
-    # 49: 35
-    # 50: 0x00
-    # 51: 20
-    # 52: 0-1
-    # 53: 0-250
-    # 54: 0x00
-    # 55: 3-250
+    # 0:     100%  0xAA        identifier 0xAA
+    # 1:     100%  0x66, 0x77  device ID (controller 0x66, heater 0x77)
+    # 2:     50%   0x02        command?
+    # 3:     100%  0x0B, 0x33  length field (0x0B for controller->heater, 0x33 for heater->controller)
+    # 4:     80%   0-1         all 1, last one 0 | heater enabled?
+    # 5:     99%   0x00-0x04   state (0x00: off, 0x01: glow plug pre heat, 0x02: ignited, 0x03: stable combustion, 0x04: stoping, cooling) [state]
+    # 6:     100%  0x01-0x0A   power level [level]
+    # 7:     0%    0x00        unknown
+    # 8:     0%    0x00, 0x03  0x03 if running, 0x00 if stopped (just last one is 0)
+    # 9:     0%    0x00, 0xFB  0xFB if running, 0x00 if stopped (just last one is 0)
+    # 10:    0%    0x00        unknown
+    # 11:    99%   153-158     input voltage [V * 10]
+    # 12:    0%    0x00        unknown
+    # 13:    40%   0-12        glow plug current [A]
+    # 14:    50%   0-1         cooling down [0/1]
+    # 15:    30%   0-16        Fan voltage? Some temperature? [V]
+    # 16-17: 99%   480,1630    heat exchanger temperature [°C * 100]
+    # 18:    0%    0x00        unknown
+    # 19:    0%    0x00        unknown
+    # 20-21: 90%   0-325       state duration [s]
+    # 22:    0%    0x00        unknown
+    # 23:    90%   0-51        pump frequency [Hz*10]
+    # 24:    25%   0-66        glow plug voltage/current/temperature
+    # 25:    25%   0-86        glow plug voltage/current/temperature
+    # 26:    25%   0-56        glow plug voltage/current/temperature
+    # 27:    25%   0-12        glow plug voltage/current/temperature
+    # 28-29  90%   0-3939      fan speed [rpm]
+    # 30-45: 0%    0x00        unknown
+    # 46:    0%    35          unknown constant
+    # 47:    0%    4           unknown constant
+    # 48:    0%    17          unknown constant
+    # 49:    0%    35          unknown constant
+    # 50:    0%    0x00        unknown
+    # 51:    0%    30, 40      unknown
+    # 52-53  10%   0-420       something glow plug related
+    # 54:    0%    0x00        unknown
+    # 55:    100%  1-254       checksum
 
-    offsets_to_skip = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,18,19,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50]
+    offsets_to_skip = [4, 7, 8,9,10, 12, 13, 22,30,51,54,55, 16,17,20,21,28,29,52,53,0,1,2,3,18,19,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50]
 
     # Define the 16-bit pairs to plot
     # For example, to plot only pair starting at offset 15 (i.e., pair 15-16)
-    pairs_to_plot = [16]
+    pairs_to_plot = [16, 20, 28, 52]
+
+    plots_into_one = [[13,24,25,26,27]]
+
+    # ===========================
+    # Plot Single-Byte Payloads, 16-bit Pairs, and Combined Groups into One Figure
+    # ===========================
+
+    # Determine the offsets to include for single-byte plots (excluding those in plots_into_one)
+    included_offsets = [i for i in range(max_len) if i not in offsets_to_skip and not any(i in group for group in plots_into_one)]
+
+    # Calculate the number of subplots:
+    # - Single-byte plots
+    # - plots_into_one groups
+    # - 16-bit pair plots
+    num_single_byte_plots = len(included_offsets)
+    num_plots_into_one = len(plots_into_one)
+    # Validate pairs_to_plot
+    valid_pairs_to_plot = [pair for pair in pairs_to_plot if 0 <= pair < (max_len -1)]
+    num_pairs_to_plot = len(valid_pairs_to_plot)
+    total_subplots = num_single_byte_plots + num_plots_into_one + num_pairs_to_plot
+
+    if total_subplots == 0:
+        print("No data available to plot.")
+        return
+
+    # Create a single figure with all subplots
+    fig, axes = plt.subplots(nrows=total_subplots, ncols=1, figsize=(15, 3 * total_subplots), sharex=True)
+    
+    # If there's only one subplot, axes is not a list, so make it a list for consistency
+    if total_subplots == 1:
+        axes = [axes]
+
+    fig.suptitle("All Payload Offsets and 16-bit Pairs vs. Frame ID", fontsize=16)
+
+    current_subplot = 0  # To keep track of the current subplot index
 
     # ===========================
     # Plot Single-Byte Payloads
     # ===========================
-
-    # Determine the offsets to include
-    included_offsets = [i for i in range(max_len) if i not in offsets_to_skip]
-
-    if not included_offsets:
-        print("No byte offsets left to plot after applying exclusions.")
-    else:
-        # Calculate the number of subplots needed
-        subplot_num = len(included_offsets)
-
-        # Create subplots
-        fig_sb, axes_sb = plt.subplots(nrows=subplot_num, ncols=1, figsize=(15, 3 * subplot_num), sharex=True)
-
-        # If there's only one subplot, axes_sb is not a list, so make it a list for consistency
-        if subplot_num == 1:
-            axes_sb = [axes_sb]
-
-        fig_sb.suptitle("Single-Byte Payload Offsets vs. Frame ID", fontsize=16)
-
-        # Iterate over included offsets and their corresponding axes
-        for ax, offset in zip(axes_sb, included_offsets):
+    if included_offsets:
+        for offset in included_offsets:
+            ax = axes[current_subplot]
             byte_values = single_bytes[offset]
             ax.plot(frame_ids, byte_values, ".-", label=f"Byte {offset}")
             ax.set_ylabel(f"Byte {offset}\nRange: {min(byte_values)}-{max(byte_values)}")
             ax.grid(True)
             ax.legend(loc='upper right')
+            current_subplot += 1
 
-        axes_sb[-1].set_xlabel("Frame ID")
-        fig_sb.tight_layout(rect=[0, 0.03, 1, 0.95])
+    # ===========================
+    # Plot Combined Groups from plots_into_one
+    # ===========================
+    if plots_into_one:
+        for group in plots_into_one:
+            ax = axes[current_subplot]
+            for offset in group:
+                byte_values = single_bytes[offset]
+                ax.plot(frame_ids, byte_values, ".-", label=f"Byte {offset}")
+            group_label = "-".join(map(str, group))
+            ax.set_ylabel(f"Bytes {group_label}\nRange: {min(min(single_bytes[offset] for offset in group))}-{max(max(single_bytes[offset] for offset in group))}")
+            ax.set_title(f"Combined Bytes {group_label}")
+            ax.grid(True)
+            ax.legend(loc='upper right')
+            current_subplot += 1
 
     # ===========================
     # Plot 16-bit Pair Payloads
     # ===========================
+    if valid_pairs_to_plot:
+        for pair_start in valid_pairs_to_plot:
+            ax = axes[current_subplot]
+            pair_values = pairs_16[pair_start]
+            ax.plot(frame_ids, pair_values, ".-", label=f"Pair {pair_start}-{pair_start +1}")
+            ax.set_ylabel(f"Pair {pair_start}-{pair_start +1}\nRange: {min(pair_values)}-{max(pair_values)}")
+            ax.grid(True)
+            ax.legend(loc='upper right')
+            current_subplot += 1
 
-    if not pairs_to_plot:
-        print("No 16-bit pairs specified to plot.")
-    else:
-        # Validate pairs_to_plot
-        valid_pairs_to_plot = [pair for pair in pairs_to_plot if 0 <= pair < (max_len -1)]
-        invalid_pairs = set(pairs_to_plot) - set(valid_pairs_to_plot)
-        if invalid_pairs:
-            print(f"Warning: The following pairs are out of range and will be skipped: {sorted(invalid_pairs)}")
+    # Set the xlabel for the last subplot
+    axes[-1].set_xlabel("Frame ID")
 
-        if not valid_pairs_to_plot:
-            print("No valid 16-bit pairs to plot.")
-        else:
-            # Calculate the number of valid pairs to plot
-            num_pairs = len(valid_pairs_to_plot)
-
-            # Create subplots
-            fig_p16, axes_p16 = plt.subplots(nrows=num_pairs, ncols=1, figsize=(15, 3 * num_pairs), sharex=True)
-
-            # If there's only one subplot, axes_p16 is not a list, so make it a list for consistency
-            if num_pairs == 1:
-                axes_p16 = [axes_p16]
-
-            fig_p16.suptitle("16-bit Big-Endian Payload Pairs vs. Frame ID", fontsize=16)
-
-            # Iterate over valid pairs and their corresponding axes
-            for ax, pair_start in zip(axes_p16, valid_pairs_to_plot):
-                pair_values = pairs_16[pair_start]
-                ax.plot(frame_ids, pair_values, ".-", label=f"Pair {pair_start}-{pair_start +1}")
-                ax.set_ylabel(f"Pair {pair_start}-{pair_start +1}\nRange: {min(pair_values)}-{max(pair_values)}")
-                ax.grid(True)
-                ax.legend(loc='upper right')
-
-            axes_p16[-1].set_xlabel("Frame ID")
-            fig_p16.tight_layout(rect=[0, 0.03, 1, 0.95])
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     # ===========================
     # Show all plots
