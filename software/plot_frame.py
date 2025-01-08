@@ -181,12 +181,28 @@ def main():
     print("\nPlotting data and statistics... Close plots to end.\n")
 
     frame_ids = list(range(len(cycles)))
-
-    # Define the offsets to exclude from plotting
+    ## short frame controller->main unit
     # 0:     100%  0xAA        identifier 0xAA
-    # 1:     100%  0x66, 0x77  device ID (controller 0x66, heater 0x77)
+    # 1:     100%  0x66        device ID (controller 0x66, heater 0x77)
     # 2:     50%   0x02        command?
-    # 3:     100%  0x0B, 0x33  length field (0x0B for controller->heater, 0x33 for heater->controller)
+    # 3:     100%  0x0B        length field (0x0B for controller->heater, 0x33 for heater->controller)
+    # 4:     0%    0x00        unknown
+    # 5:     0%    0x00        unknown
+    # 6:     0%    0x00        unknown
+    # 7:     0%    0x00        unknown
+    # 8:     100%  1-10        power level [level]
+    # 9:     90%   2, 6, 8     requested state (0x02: off, 0x06: start, 0x08: running) [state]
+    # 10:    0%    0x00        unknown
+    # 11:    0%    0x00        unknown
+    # 12:    0%    0x00        unknown
+    # 13:    0%    0x00        unknown
+    # 14:    100%  1-255       checksum
+
+    ## long frame main unit->controller
+    # 0:     100%  0xAA        identifier 0xAA
+    # 1:     100%  0x77  device ID (controller 0x66, heater 0x77)
+    # 2:     50%   0x02        command?
+    # 3:     100%  0x33  length field (0x0B for controller->heater, 0x33 for heater->controller)
     # 4:     80%   0-1         all 1, last one 0 | heater enabled?
     # 5:     99%   0x00-0x04   state (0x00: off, 0x01: glow plug pre heat, 0x02: ignited, 0x03: stable combustion, 0x04: stoping, cooling) [state]
     # 6:     100%  0x01-0x0A   power level [level]

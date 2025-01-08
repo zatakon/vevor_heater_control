@@ -1,0 +1,293 @@
+external_components:
+  - source: ../components
+
+substitutions:
+  id_name: rnw_esphm_c3_01_workshop_heater
+  friendly_name: esp32c3-workshop-heater
+  update_wifi: 60s
+  update_uptime: 60s
+  pin_a0: GPIO0
+  pin_a1: GPIO1
+  pin_a2: GPIO2
+  pin_a3: GPIO3
+  pin_batt_v: GPIO4
+  pin_i2c_scl: GPIO8
+  pin_i2c_sda: GPIO7
+  pin_d6: GPIO6
+  pin_d10: GPIO0
+  pin_d18: GPIO8
+  pin_btn_pwr: GPIO0
+  pin_vin: GPIO1
+  pin_chrg_sence: GPIO5
+  pin_chrg_state: GPIO9
+
+  # VOLTAGE BATTERY
+  batt_capacity_table_size: "11"
+  batt_voltage_max: "4.2"
+  batt_voltage_min: "3.2"
+  batt_r1: "150.0"
+  batt_r2: "200.0"
+  batt_v: "4.2"
+
+  # VOLTAGE IN
+  vin_r1: "200.0"
+  vin_r2: "10.0"
+
+esphome:
+  name: ${friendly_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: DEBUG  # Optional: Set to DEBUG for detailed logs
+  baud_rate: 115200
+  hardware_uart: UART0
+
+# Enable Home Assistant API
+# api:
+#   encryption:
+#     key: "ww8hNF2Tq7ShF52H5nS4QyEm6+PtV9Alv0DTMEVJv+w="
+
+ota:
+  - platform: esphome
+    password: "5d88ade2ef43066eeff6d5b1497bbc11"
+
+wifi:
+  # ssid: M_AP
+  # password: aidajekrasna
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "${friendly_name}"
+    password: "IDbWG7CaLYjw"
+
+web_server:
+  local: True
+  port: 80
+
+captive_portal:
+
+deep_sleep:
+  id: deep_sleep_1
+
+i2c:
+  id: i2c_0
+  scan: false
+  sda: ${pin_i2c_sda}
+  scl: ${pin_i2c_scl}
+  frequency: 400kHz 
+
+uart:
+  - id: logger_serial
+    tx_pin: GPIO21
+    rx_pin: GPIO20
+    baud_rate: 115200
+  - id: heater_serial
+    rx_pin: 
+      number: ${pin_a1}
+      inverted: true
+    baud_rate: 4800
+
+vevorheater:
+  id: vevor_heater
+  uart_id: heater_serial
+
+  # Define Sensors for Long Frame (main unit -> controller)
+  # voltage_sensor:
+  #   name: "Vevor Heater Voltage"
+  #   unit_of_measurement: "V"
+  #   accuracy_decimals: 2
+  # temperature_sensor:
+  #   name: "Vevor Heater Temperature"
+  #   unit_of_measurement: "°C"
+  #   accuracy_decimals: 1
+  # state_sensor:
+  #   name: "Vevor Heater State"
+  #   device_class: "power"
+  #   icon: "mdi:power"
+  # power_level_sensor:
+  #   name: "Vevor Heater Power Level"
+  #   unit_of_measurement: "%"
+  #   accuracy_decimals: 0
+  # fan_speed_sensor:
+  #   name: "Vevor Heater Fan Speed"
+  #   unit_of_measurement: "RPM"
+  #   accuracy_decimals: 0
+  # pump_frequency_sensor:
+  #   name: "Vevor Heater Pump Frequency"
+  #   unit_of_measurement: "Hz"
+  #   accuracy_decimals: 1
+  # input_voltage_sensor:
+  #   name: "Vevor Heater Input Voltage"
+  #   unit_of_measurement: "V"
+  #   accuracy_decimals: 1
+  # glow_plug_current_sensor:
+  #   name: "Vevor Heater Glow Plug Current"
+  #   unit_of_measurement: "A"
+  #   accuracy_decimals: 1
+  # cooling_down_sensor:
+  #   name: "Vevor Heater Cooling Down"
+  #   unit_of_measurement: "Status"
+  #   icon: "mdi:fan-off"
+  # fan_voltage_sensor:
+  #   name: "Vevor Heater Fan Voltage"
+  #   unit_of_measurement: "V"
+  #   accuracy_decimals: 1
+  # heat_exchanger_temp_sensor:
+  #   name: "Vevor Heater Heat Exchanger Temperature"
+  #   unit_of_measurement: "°C"
+  #   accuracy_decimals: 2
+  # state_duration_sensor:
+  #   name: "Vevor Heater State Duration"
+  #   unit_of_measurement: "s"
+  #   accuracy_decimals: 0
+  # glow_plug_voltage_sensor:
+  #   name: "Vevor Heater Glow Plug Voltage"
+  #   unit_of_measurement: "V"
+  #   accuracy_decimals: 1
+  # glow_plug_current_2_sensor:
+  #   name: "Vevor Heater Glow Plug Current 2"
+  #   unit_of_measurement: "A"
+  #   accuracy_decimals: 1
+  # glow_plug_temperature_sensor:
+  #   name: "Vevor Heater Glow Plug Temperature"
+  #   unit_of_measurement: "°C"
+  #   accuracy_decimals: 1
+  # # You can add more sensors based on additional fields
+
+  # Define Sensors for Short Frame (controller -> main unit)
+  short_power_level_sensor:
+    name: "Vevor Heater Short Frame Power Level"
+    # unit_of_measurement: "%"
+    # accuracy_decimals: 0
+  short_state_sensor:
+    name: "Vevor Heater Short Frame State"
+    # unit_of_measurement: "State"
+    # icon: "mdi:power"
+  short_state_text_sensor:
+    name: "Vevor Heater Short Frame State Text"
+    # icon: "mdi:power"
+  # Add more short frame sensors if needed
+
+# binary_sensor:
+#   - platform: gpio
+#     id: ${id_name}_a0
+#     pin:
+#       number: ${pin_a0}
+#       mode: INPUT
+#   - platform: gpio
+#     id: ${id_name}_a1
+#     pin:
+#       number: ${pin_a1}
+#       mode: INPUT
+#   - platform: gpio
+#     id: ${id_name}_a3
+#     pin:
+#       number: ${pin_a3}
+#       mode: INPUT
+
+sensor:
+  # BATTERY VOLTAGE
+  - platform: template
+    name: "${friendly_name} Battery Capacity"
+    id: ${id_name}_batt_capacity_sensor
+    update_interval: 1s
+    lambda: |-
+      uint8_t batt_capacity_table[${batt_capacity_table_size}] = {100, 94, 85, 76, 66, 54, 26, 12, 5, 2, 0};
+      float voltage = id(${id_name}_batt_voltage_sensor).state;
+      float capacity = 0.0;
+      if(voltage >= ${batt_voltage_max}) {
+        capacity = 100;
+      } else if(voltage <= ${batt_voltage_min}) {
+          capacity = 0;
+      } else {
+          uint8_t lookUpTablePosition = uint8_t((${batt_voltage_max} - voltage)*10);
+          uint16_t x0 = uint16_t(voltage*10) * 100;
+          uint16_t x1 = x0 + 100;
+          uint16_t x = uint16_t(voltage*1000);
+          capacity = (batt_capacity_table[lookUpTablePosition+1]*(x1-x) + batt_capacity_table[lookUpTablePosition]*(x-x0)) / (100);
+      }
+      return capacity;
+
+  - platform: adc
+    name: "${friendly_name}: Battery Voltage"
+    id: ${id_name}_batt_voltage_sensor
+    pin: ${pin_batt_v}
+    attenuation: 12db
+    update_interval: 1s
+    filters:
+      - lambda: |-
+          return x * ((${batt_r1} + ${batt_r2}) / ${batt_r2});
+
+  # WIFI SIGNAL
+  - platform: wifi_signal
+    name: "${friendly_name}: WiFi Signal Sensor"
+    id: ${id_name}_wifi_signal
+    update_interval: ${update_wifi}
+  
+  # UPTIME
+  - platform: uptime
+    name: "${friendly_name}: Uptime Sensor"
+    id: ${id_name}_uptime_sensor
+    update_interval: ${update_uptime}
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: ${id_name}_uptime_human
+            state: !lambda |-
+              int seconds = round(id(${id_name}_uptime_sensor).raw_state);
+              int days = seconds / (24 * 3600);
+              seconds = seconds % (24 * 3600);
+              int hours = seconds / 3600;
+              seconds = seconds % 3600;
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (days ? to_string(days) + "d " : "") +
+                (hours ? to_string(hours) + "h " : "") +
+                (minutes ? to_string(minutes) + "m " : "") +
+                (to_string(seconds) + "s")
+              ).c_str();
+
+text_sensor:
+  # UPTIME HUMAN READABLE
+  - platform: template
+    name: "${friendly_name}: Uptime"
+    id: ${id_name}_uptime_human
+    icon: mdi:clock-start
+
+  # WIFI INFO
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name}: IP Address"
+      id: ${id_name}_ip_address_sensor
+    ssid:
+      name: "${friendly_name}: SSID"
+      id: ${id_name}_ssid_sensor
+    bssid:
+      name: "${friendly_name}: BSSID"
+      id: ${id_name}_bssid_sensor
+    mac_address:
+      name: "${friendly_name}: MAC Address"
+      id: ${id_name}_mac_address_sensor
+
+  # ESP VERSION
+  - platform: version
+    name: "${friendly_name}: ESPHome Version"
+    id: ${id_name}_esphome_version_sensor
+
+button:
+  # DEEP SLEEP
+  - platform: template
+    name: "${friendly_name}: Go to Deep Sleep"
+    id: ${id_name}_go_to_deep_sleep
+    on_press:
+      then:
+        - deep_sleep.enter:
+            id: deep_sleep_1
+            sleep_duration: 20s
