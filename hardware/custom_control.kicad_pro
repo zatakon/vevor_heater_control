@@ -231,7 +231,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "controller_schematics.kicad_pro",
+    "filename": "custom_control.kicad_pro",
     "version": 1
   },
   "net_settings": {
