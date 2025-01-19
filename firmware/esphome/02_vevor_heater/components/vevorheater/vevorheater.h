@@ -1,4 +1,5 @@
 // vevorheater.h
+
 #pragma once
 
 #include "esphome/core/component.h"
@@ -38,7 +39,11 @@ class VevorHeater : public PollingComponent {
   // Setters for Short Frame Sensors
   void set_short_power_level_sensor(sensor::Sensor *sensor) { short_power_level_sensor_ = sensor; }
   void set_short_state_sensor(sensor::Sensor *sensor) { short_state_sensor_ = sensor; }
-  void set_short_frame_state_text_sensor(text_sensor::TextSensor *sensor) { short_frame_state_text_sensor_ = sensor; }
+  void set_short_state_text_sensor(text_sensor::TextSensor *sensor) { short_frame_state_text_sensor_ = sensor; }
+
+  // Public methods to control heater externally
+  void set_heater_on(bool on);
+  void set_heater_level(float level);
 
   void setup() override;
   void update() override;
@@ -55,6 +60,7 @@ class VevorHeater : public PollingComponent {
   sensor::Sensor *voltage_sensor_{nullptr};
   sensor::Sensor *temperature_sensor_{nullptr};
   sensor::Sensor *state_sensor_{nullptr};
+  text_sensor::TextSensor *state_text_sensor_{nullptr};
   sensor::Sensor *power_level_sensor_{nullptr};
   sensor::Sensor *fan_speed_sensor_{nullptr};
   sensor::Sensor *pump_frequency_sensor_{nullptr};
@@ -72,6 +78,10 @@ class VevorHeater : public PollingComponent {
   sensor::Sensor *short_power_level_sensor_{nullptr};
   sensor::Sensor *short_state_sensor_{nullptr};
   text_sensor::TextSensor *short_frame_state_text_sensor_{nullptr};
+
+  // Internal State Variables
+  bool heater_requested_on_ = false;
+  uint8_t heater_level_percentage_ = 0;
 
   // Utility functions
   uint16_t read_uint16(const std::vector<uint8_t> &frame, size_t index);

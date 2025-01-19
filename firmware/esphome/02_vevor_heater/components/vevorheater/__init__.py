@@ -1,6 +1,8 @@
+# __init__.py
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import sensor, uart, text_sensor, binary_sensor, number
+from esphome.components import sensor, uart, text_sensor, binary_sensor, number, switch
 from esphome.const import (
     CONF_ID,
     CONF_UART_ID,
@@ -38,6 +40,8 @@ CONF_GLOW_PLUG_TEMPERATURE_SENSOR = "glow_plug_temperature_sensor"
 CONF_SHORT_POWER_LEVEL_SENSOR = "short_power_level_sensor"
 CONF_SHORT_STATE_SENSOR = "short_state_sensor"
 CONF_SHORT_STATE_TEXT_SENSOR = "short_state_text_sensor"
+
+# New Configuration Keys for Switch and Slider are removed
 
 CONFIG_SCHEMA = (
     cv.Schema(
@@ -120,6 +124,8 @@ CONFIG_SCHEMA = (
             ),
             cv.Optional(CONF_SHORT_STATE_TEXT_SENSOR): text_sensor.text_sensor_schema(
             ),
+
+            # Heater Switch and Level are now external
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -202,9 +208,9 @@ async def to_code(config):
     if CONF_SHORT_STATE_SENSOR in config:
         sens = await sensor.new_sensor(config[CONF_SHORT_STATE_SENSOR])
         cg.add(var.set_short_state_sensor(sens))
-
+    
     if CONF_SHORT_STATE_TEXT_SENSOR in config:
         sens = await text_sensor.new_text_sensor(config[CONF_SHORT_STATE_TEXT_SENSOR])
         cg.add(var.set_short_state_text_sensor(sens))
     
-    # Add more sensors handling as needed
+    # No direct handling of heater_switch and heater_level here
