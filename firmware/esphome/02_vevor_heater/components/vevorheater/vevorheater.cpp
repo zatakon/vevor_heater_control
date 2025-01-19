@@ -5,6 +5,25 @@
 #include "esphome/core/hal.h"
 #include <cinttypes>
 
+uint8_t calculateChecksum(const std::vector<uint8_t>& frame) {
+    // Ensure the frame has at least 3 bytes:
+    // - Byte 0: Identifier (0xAA)
+    // - Byte 1: Device ID
+    // - Byte 2: Start of data
+    // - Byte (N-1): Checksum
+    if (frame.size() < 4) {
+        return 0;
+    }
+    uint32_t sum = 0;
+    // Sum all bytes from index 2 to index (size - 2) inclusive
+    for (size_t i = 2; i < frame.size() - 1; ++i) {
+        sum += frame[i];
+    }
+    // Calculate checksum as sum modulo 256
+    uint8_t checksum = static_cast<uint8_t>(sum % 256);
+    return checksum;
+}
+
 namespace esphome {
 namespace vevorheater {
 
@@ -18,6 +37,8 @@ void VevorHeater::setup() {
   }
   this->uart_->set_baud_rate(4800);
   this->last_received_time_ = millis(); // Initialize the timestamp
+
+  // Initialize internal state if needed
 }
 
 void VevorHeater::update() {
@@ -42,6 +63,65 @@ void VevorHeater::update() {
       this->frame_buffer_.clear(); // Clear the buffer for the next frame
     }
   }
+
+// TODO: state machine here
+
+  // Handle Heater Control based on internal state
+//   if (heater_requested_on_) {
+//         // Send short frame once per second with current heater level
+//         static uint32_t last_send_time = 0;
+//         uint32_t now = millis();
+//         if (now - last_send_time >= 1000) { // 1 second interval
+//         last_send_time = now;
+//         std::vector<uint8_t> short_frame;
+
+//         // TODO: Populate with appropriate short frame data based on heater_level_percentage_
+//         // Example short frame structure (replace with actual frame format)
+//         short_frame.push_back(0xAA); 
+//         short_frame.push_back(0x66); 
+//         short_frame.push_back(0x02); 
+//         short_frame.push_back(0x0B);
+//         short_frame.push_back(0x00);
+//         short_frame.push_back(0x00);
+//         short_frame.push_back(0x00);
+//         short_frame.push_back(0x00);
+//         short_frame.push_back(this->heater_level_percentage_/10);
+//         short_frame.push_back(0x08);
+//         short_frame.push_back(0x00);
+//         short_frame.push_back(0x00);
+//         short_frame.push_back(0x00);
+//         uint8_t checksum = calculateChecksum(short_frame);
+//         short_frame.push_back(checksum);
+
+//         this->uart_->write_array(short_frame.data(), short_frame.size());
+//         ESP_LOGD(TAG, "Sent short frame to turn heater ON with level %u%%", this->heater_level_percentage_);
+// }
+//   } else {
+//     // Heater is requested to be off, but continue sending frames until main unit confirms off
+//     // Check the state_sensor_ to determine if heater is still on
+//     if (this->state_sensor_ && this->state_sensor_->state != 0) { // Assuming 0 is OFF
+//       std::vector<uint8_t> short_frame;
+
+//       short_frame.push_back(0xAA); 
+//       short_frame.push_back(0x66); 
+//       short_frame.push_back(0x02); 
+//       short_frame.push_back(0x0B);
+//       short_frame.push_back(0x00);
+//       short_frame.push_back(0x00);
+//       short_frame.push_back(0x00);
+//       short_frame.push_back(0x00);
+//       short_frame.push_back(this->heater_level_percentage_/10);
+//       short_frame.push_back(0x02);
+//       short_frame.push_back(0x00);
+//       short_frame.push_back(0x00);
+//       short_frame.push_back(0x00);
+//       uint8_t checksum = calculateChecksum(short_frame);
+//       short_frame.push_back(checksum);
+
+//       this->uart_->write_array(short_frame.data(), short_frame.size());
+//       ESP_LOGD(TAG, "Sent short frame to turn heater OFF");
+//     }
+//   }
 }
 
 void VevorHeater::process_frame(const std::vector<uint8_t> &frame) {
@@ -96,6 +176,9 @@ void VevorHeater::process_frame(const std::vector<uint8_t> &frame) {
   else if (length_field == 0x33 && frame.size() >= 56) {
     // Long Frame: main unit -> controller
     ESP_LOGD(TAG, "Processing Long Frame");
+
+    // Existing Long Frame processing logic...
+    // [Keep all existing code here without changes]
 
     // Byte 4: Heater Enabled? (0-1)
     uint8_t heater_enabled = read_uint8(frame, 4);
@@ -164,8 +247,8 @@ void VevorHeater::process_frame(const std::vector<uint8_t> &frame) {
     }
 
     // Bytes 16-17: Heat Exchanger Temperature [°C * 100] (480-1630)
-    uint16_t heat_exchanger_temp_raw = read_uint16(frame, 16);
-    float heat_exchanger_temp = heat_exchanger_temp_raw / 100.0;
+    int16_t heat_exchanger_temp_raw = read_uint16(frame, 16);
+    float heat_exchanger_temp = heat_exchanger_temp_raw / 10.0;
     if (this->heat_exchanger_temp_sensor_) {
       this->heat_exchanger_temp_sensor_->publish_state(heat_exchanger_temp);
       ESP_LOGD(TAG, "Long Frame - Heat Exchanger Temperature: %.2f °C", heat_exchanger_temp);
@@ -247,11 +330,31 @@ void VevorHeater::dump_config() {
 
   LOG_SENSOR("", "Vevor Heater Short Frame Power Level", this->short_power_level_sensor_);
   LOG_SENSOR("", "Vevor Heater Short Frame State", this->short_state_sensor_);
+  
+  // No switch and number to dump
 }
 
 float VevorHeater::get_setup_priority() const { return setup_priority::DATA; }
 
-// Utility function to read a big-endian 16-bit unsigned integer from the frame
+// Public method to set heater on/off
+void VevorHeater::set_heater_on(bool on) {
+  if (this->heater_requested_on_ == on) {
+    return; // No change
+  }
+  this->heater_requested_on_ = on;
+  ESP_LOGD(TAG, "Heater set to %s", on ? "ON" : "OFF");
+}
+
+// Public method to set heater level
+void VevorHeater::set_heater_level(float level) {
+  uint8_t new_level = static_cast<uint8_t>(level);
+  if (this->heater_level_percentage_ == new_level) {
+    return; // No change
+  }
+  this->heater_level_percentage_ = new_level;
+  ESP_LOGD(TAG, "Heater level set to %u%%", this->heater_level_percentage_);
+}
+
 uint16_t VevorHeater::read_uint16(const std::vector<uint8_t> &frame, size_t index) {
   if (index + 1 >= frame.size()) {
     return 0;
@@ -259,7 +362,6 @@ uint16_t VevorHeater::read_uint16(const std::vector<uint8_t> &frame, size_t inde
   return (static_cast<uint16_t>(frame[index]) << 8) | frame[index + 1];
 }
 
-// Utility function to read an 8-bit unsigned integer from the frame
 uint8_t VevorHeater::read_uint8(const std::vector<uint8_t> &frame, size_t index) {
   if (index >= frame.size()) {
     return 0;

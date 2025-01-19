@@ -1,3 +1,5 @@
+# vevor.yaml
+
 external_components:
   - source: ../components
 
@@ -57,9 +59,11 @@ ota:
   - platform: esphome
     password: "5d88ade2ef43066eeff6d5b1497bbc11"
 
+api:
+
 wifi:
-  # ssid: M_AP
-  # password: aidajekrasna
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -91,6 +95,9 @@ uart:
     rx_pin: 
       number: ${pin_a1}
       inverted: true
+    tx_pin:
+      number: ${pin_a0}
+      inverted: true
     baud_rate: 4800
 
 vevorheater:
@@ -98,54 +105,54 @@ vevorheater:
   uart_id: heater_serial
 
   # Define Sensors for Long Frame (main unit -> controller)
-  # voltage_sensor:
-  #   name: "Vevor Heater Voltage"
-  #   unit_of_measurement: "V"
-  #   accuracy_decimals: 2
-  # temperature_sensor:
-  #   name: "Vevor Heater Temperature"
-  #   unit_of_measurement: "°C"
-  #   accuracy_decimals: 1
-  # state_sensor:
-  #   name: "Vevor Heater State"
-  #   device_class: "power"
-  #   icon: "mdi:power"
-  # power_level_sensor:
-  #   name: "Vevor Heater Power Level"
-  #   unit_of_measurement: "%"
-  #   accuracy_decimals: 0
-  # fan_speed_sensor:
-  #   name: "Vevor Heater Fan Speed"
-  #   unit_of_measurement: "RPM"
-  #   accuracy_decimals: 0
-  # pump_frequency_sensor:
-  #   name: "Vevor Heater Pump Frequency"
-  #   unit_of_measurement: "Hz"
-  #   accuracy_decimals: 1
-  # input_voltage_sensor:
-  #   name: "Vevor Heater Input Voltage"
-  #   unit_of_measurement: "V"
-  #   accuracy_decimals: 1
-  # glow_plug_current_sensor:
-  #   name: "Vevor Heater Glow Plug Current"
-  #   unit_of_measurement: "A"
-  #   accuracy_decimals: 1
-  # cooling_down_sensor:
-  #   name: "Vevor Heater Cooling Down"
-  #   unit_of_measurement: "Status"
-  #   icon: "mdi:fan-off"
+  voltage_sensor:
+    name: "Vevor Heater Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+  temperature_sensor:
+    name: "Vevor Heater Temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+  state_sensor:
+    name: "Vevor Heater State"
+    device_class: "power"
+    icon: "mdi:power"
+  power_level_sensor:
+    name: "Vevor Heater Power Level"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+  fan_speed_sensor:
+    name: "Vevor Heater Fan Speed"
+    unit_of_measurement: "RPM"
+    accuracy_decimals: 0
+  pump_frequency_sensor:
+    name: "Vevor Heater Pump Frequency"
+    unit_of_measurement: "Hz"
+    accuracy_decimals: 1
+  input_voltage_sensor:
+    name: "Vevor Heater Input Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+  glow_plug_current_sensor:
+    name: "Vevor Heater Glow Plug Current"
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+  cooling_down_sensor:
+    name: "Vevor Heater Cooling Down"
+    unit_of_measurement: "Status"
+    icon: "mdi:fan-off"
   # fan_voltage_sensor:
   #   name: "Vevor Heater Fan Voltage"
   #   unit_of_measurement: "V"
   #   accuracy_decimals: 1
-  # heat_exchanger_temp_sensor:
-  #   name: "Vevor Heater Heat Exchanger Temperature"
-  #   unit_of_measurement: "°C"
-  #   accuracy_decimals: 2
-  # state_duration_sensor:
-  #   name: "Vevor Heater State Duration"
-  #   unit_of_measurement: "s"
-  #   accuracy_decimals: 0
+  heat_exchanger_temp_sensor:
+    name: "Vevor Heater Heat Exchanger Temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 2
+  state_duration_sensor:
+    name: "Vevor Heater State Duration"
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
   # glow_plug_voltage_sensor:
   #   name: "Vevor Heater Glow Plug Voltage"
   #   unit_of_measurement: "V"
@@ -154,10 +161,10 @@ vevorheater:
   #   name: "Vevor Heater Glow Plug Current 2"
   #   unit_of_measurement: "A"
   #   accuracy_decimals: 1
-  # glow_plug_temperature_sensor:
-  #   name: "Vevor Heater Glow Plug Temperature"
-  #   unit_of_measurement: "°C"
-  #   accuracy_decimals: 1
+  glow_plug_temperature_sensor:
+    name: "Vevor Heater Glow Plug Temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
   # # You can add more sensors based on additional fields
 
   # Define Sensors for Short Frame (controller -> main unit)
@@ -174,22 +181,46 @@ vevorheater:
     # icon: "mdi:power"
   # Add more short frame sensors if needed
 
-# binary_sensor:
-#   - platform: gpio
-#     id: ${id_name}_a0
-#     pin:
-#       number: ${pin_a0}
-#       mode: INPUT
-#   - platform: gpio
-#     id: ${id_name}_a1
-#     pin:
-#       number: ${pin_a1}
-#       mode: INPUT
-#   - platform: gpio
-#     id: ${id_name}_a3
-#     pin:
-#       number: ${pin_a3}
-#       mode: INPUT
+# Define the Heater Switch (Button) Outside the VevorHeater Component
+switch:
+  - platform: template
+    name: "Heater On/Off"
+    id: heater_switch
+    optimistic: true
+    turn_on_action:
+      - lambda: |-
+          id(vevor_heater).set_heater_on(true);
+    turn_off_action:
+      - lambda: |-
+          id(vevor_heater).set_heater_on(false);
+
+# Define the Heater Level Slider (Number) Outside the VevorHeater Component
+number:
+  - platform: template
+    name: "Heater Level"
+    id: heater_level
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: "mdi:percent"
+    optimistic: true
+    set_action:
+      - lambda: |-
+          id(vevor_heater).set_heater_level(x);
+    # No need for update_action since it's controlled externally
+
+    # Heater Level Sensor (Number Component)
+  - platform: template
+    name: "${friendly_name}: Heater Level Status"
+    id: vevor_heater_heater_level_status
+    optimistic: true
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    # Optional: Reflect the current heater level if needed
+    # Implement as needed
 
 sensor:
   # BATTERY VOLTAGE
