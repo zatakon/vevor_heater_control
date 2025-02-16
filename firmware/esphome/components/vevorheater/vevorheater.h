@@ -14,6 +14,21 @@
 namespace esphome {
 namespace vevorheater {
 
+enum VevorHeaterState {
+  OFF = 0x00,
+  GLOW_PLUG_PRE_HEAT = 0x01,
+  IGNITED = 0x02,
+  STABLE_COMBUSTION = 0x03,
+  STOPPING_COOLING = 0x04,
+};
+
+enum VevorHeaterShortFrameState {
+  SHORT_OFF = 0x02,
+  SHORT_SET_OFF = 0x05,
+  SHORT_SET_ON = 0x06,
+  SHORT_RUNNING = 0x08,
+};
+
 class VevorHeater : public PollingComponent {
  public:
   void set_uart_bus(uart::UARTComponent *uart) { uart_ = uart; }
@@ -42,7 +57,8 @@ class VevorHeater : public PollingComponent {
   void set_short_state_text_sensor(text_sensor::TextSensor *sensor) { short_frame_state_text_sensor_ = sensor; }
 
   // Public methods to control heater externally
-  void set_heater_on(bool on);
+  void set_heater_on(void);
+  void set_heater_off(void);
   void set_heater_level(float level);
 
   void setup() override;
@@ -55,6 +71,12 @@ class VevorHeater : public PollingComponent {
   std::vector<uint8_t> frame_buffer_;
   uint32_t last_received_time_ = 0;
   void process_frame(const std::vector<uint8_t> &frame);
+
+  // Internal State Variables
+  VevorHeaterState state_ = VevorHeaterState::OFF;
+  bool heater_requested_on_ = false;
+  uint8_t heater_level_percentage_ = 0;
+  uint32_t last_send_time = 0;
 
   // Sensor pointers for Long Frame
   sensor::Sensor *voltage_sensor_{nullptr};
@@ -78,10 +100,6 @@ class VevorHeater : public PollingComponent {
   sensor::Sensor *short_power_level_sensor_{nullptr};
   sensor::Sensor *short_state_sensor_{nullptr};
   text_sensor::TextSensor *short_frame_state_text_sensor_{nullptr};
-
-  // Internal State Variables
-  bool heater_requested_on_ = false;
-  uint8_t heater_level_percentage_ = 0;
 
   // Utility functions
   uint16_t read_uint16(const std::vector<uint8_t> &frame, size_t index);

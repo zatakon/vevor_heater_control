@@ -132,7 +132,7 @@ def main():
 
     # Populate the lists with response payloads
     for cycle in cycles:
-        frame = cycle.response
+        frame = cycle.request
         plen = len(frame.payload)
         for i in range(plen):
             single_bytes[i].append(frame.payload[i])
