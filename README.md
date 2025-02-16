@@ -1,38 +1,47 @@
-# vevor heater control
+# Vevor heater control
 Vevor diesel heater control project
 
-## why?
-There is project for communication with chinnese heaters, but this broadly used protocol in cheap diesel heaters is unfortunately not used in Vevor ones. By date I needed to control the one I have in storage there was no serious work in this topic, so I started investigation by my own. 
+I buyed Vevor diesel hieter and put it into my workshop with intention to keep temperature above zero in winter times. There is project for communication with chinnese heaters, but this broadly used protocol is unfortunately not used in Vevor ones. Because there was no solution how to connect Vevor into my Home assistant ecosystem, I needed to do it by myself.
 
-## goal
-Make component for ESPHome for full control of Vevor diesel heaters.
+## 2. current status of the project
+The project is now ready to use. You need you hardware for connecting to the bus. Then you can open terminal in location of 
+```
+firmware/esphome/vevor_heater_example
+```
+Change for your board configuration and run it
+```bash
+esphome run vevor_heater_example
+```
+In folder firmware/esphome/RNW-ESPHOME-C3-MNM-VEVOR there is project for my board with more settings.
 
-## current status of the project
-There are two projects - one for reading data frames from Vevor heater, second project connected to Home assistant sending current status. 
-Turning the heater on and off remotely will come soon.
+![ESPhome view](docs/images/home_assistant_view.png)
+![ESPhome view](docs/images/home_assistant_plot.png)
 
-## few things to know
-The conroller sends every second command to main unit. Unit sends back current status.
-Baudrate is 4.8 kbaud. 
-
-## hardware
+## 4. hardware
 The bus is open drain. Basic voltage is cca 4V and very noisy (3.3 - 6V). Dont connect directly to any MCU without protection, there is risk that magic smoke will escape... 
 
-## controller
+Captured communication looks like this:
+![picoscope communication](docs/communication/Capture.PNG)
+
+### 4.1. controller
 Hardware seems to be very similar as described by [Ray Jones](https://gitlab.com/mrjones.id.au/bluetoothheater/-/blob/master/Documentation/V9%20-%20Hacking%20the%20Chinese%20Diesel%20Heater%20Communications%20Protocol.pdf?ref_type=heads)
 Half duplex communication using NPN, PNP transistors and EN pin driving them. 
 The CPU in Vevor controller is most likely 5V tolerant, unlike our ESP32. I created simple circuit for safe connection between Vevor bus and my Esp32.
 
-##### connection to esp32
+### 4.2. connection to esp32
 This is simple schematics how I connected my Esp32 to the bus.
 ![Connection Esp32 to vevor](docs/images/vevor_heater_esp32.PNG)
 
-## Communication controller -> main unit
+## 5. software
+The conroller sends every second command to main unit. Unit sends back current status.
+Baudrate is 4.8 kbaud. 
+
+### 5.1 Communication controller -> main unit
 |byte   | certainty | values     | comment
 | ---   | ---       | ---        | ---
 |0:     |  100%     |0xAA        |identifier 0xAA
 |1:     |  100%     |0x66        |device ID (controller 0x66, heater 0x77)
-|2:     |  50%      |0x02        |command?
+|2:     |  50%      |0x02 0x06   |command? (0x02: get state, 0x06: start up)
 |3:     |  100%     |0x0B        |length field (0x0B for controller->heater, 0x33 for heater->controller)
 |4:     |0%         |0x00        |unknown
 |5:     |0%         |0x00        |unknown
@@ -46,7 +55,7 @@ This is simple schematics how I connected my Esp32 to the bus.
 |13:    |0%         |0x00        |unknown
 |14:    |100%       |1-255       |checksum
 
-## Communication main unit -> controller
+### 5.2 Communication main unit -> controller
 |byte   | certainty | values     | comment
 | ---   | ---       | ---        | ---
 | 0:    | 100%      | 0xAA       |identifier 0xAA
@@ -87,3 +96,14 @@ This is simple schematics how I connected my Esp32 to the bus.
 | 54:   | 0%        | 0x00       |unknown
 | 55:   | 100%      | 1-254      |checksum
 
+### 5.2.3. Plot
+Use python script software/plot_frame.py for visualize values in frame. You can just run it, there are needed data included in docs. It looks like this:
+
+![Frame plot](docs/images/frame_plot.png)
+
+## 6. Ready to use device
+In case there would be interrest in the units which could be used as replacement for basic ones, I am open to this option. But even if I dont need to earn money on this, the units would be comparable price as whole diesel heater. But if ca 60USD + shipping would make sanse for you, feel free to contact me or join the project.
+
+In feature, I will add small display, buttons and low power mode. 
+
+j.meindl@seznam.cz

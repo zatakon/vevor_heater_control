@@ -38,7 +38,10 @@ void VevorHeater::setup() {
   this->uart_->set_baud_rate(4800);
   this->last_received_time_ = millis(); // Initialize the timestamp
 
-  // Initialize internal state if needed
+  this->state_ = VevorHeaterState::OFF;
+  this->heater_requested_on_ = false;
+  this->heater_level_percentage_ = 100;
+  this->last_send_time = millis();
 }
 
 void VevorHeater::update() {
@@ -64,7 +67,109 @@ void VevorHeater::update() {
     }
   }
 
-// TODO: state machine here
+  uint32_t now = millis();
+  if (now - last_send_time >= 1000) {
+    last_send_time = now;
+    
+    std::vector<uint8_t> short_frame;
+    // if heater is requested to be off
+    if (!heater_requested_on_) {
+      if (this->state_ == VevorHeaterState::OFF) {
+        return;
+      } else if (this->state_ != VevorHeaterState::STOPPING_COOLING) {
+        // Send short frame to turn heater OFF
+        short_frame.push_back(0xAA); 
+        short_frame.push_back(0x66); 
+        short_frame.push_back(0x06); 
+        short_frame.push_back(0x0B);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(10);
+        short_frame.push_back(0x05);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        uint8_t checksum = calculateChecksum(short_frame);
+        short_frame.push_back(checksum);
+        
+        this->uart_->write_array(short_frame.data(), short_frame.size());
+        ESP_LOGD(TAG, "Sent short frame to set level %u%%", this->heater_level_percentage_);
+      } else {
+        // Send short frame to keep heater shutting OFF
+        short_frame.push_back(0xAA); 
+        short_frame.push_back(0x66); 
+        short_frame.push_back(0x02); 
+        short_frame.push_back(0x0B);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(10);
+        short_frame.push_back(0x02);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        uint8_t checksum = calculateChecksum(short_frame);
+        short_frame.push_back(checksum);
+        
+        this->uart_->write_array(short_frame.data(), short_frame.size());
+        ESP_LOGD(TAG, "Sent short frame to set level %u%%", this->heater_level_percentage_);
+      }
+    // if heater is requested to be on
+    } else {
+      if (this->state_ == VevorHeaterState::OFF) {
+        // Send short frame to turn heater ON
+        short_frame.push_back(0xAA); 
+        short_frame.push_back(0x66); 
+        short_frame.push_back(0x06); 
+        short_frame.push_back(0x0B);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(this->heater_level_percentage_/10);
+        short_frame.push_back(0x06);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        uint8_t checksum = calculateChecksum(short_frame);
+        short_frame.push_back(checksum);
+
+        this->uart_->write_array(short_frame.data(), short_frame.size());
+        ESP_LOGD(TAG, "Sent short frame to turn heater ON with level %u%%", this->heater_level_percentage_);
+      } else {
+        // Send short frame to keep heater ON
+        short_frame.push_back(0xAA); 
+        short_frame.push_back(0x66); 
+        short_frame.push_back(0x02); 
+        short_frame.push_back(0x0B);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(this->heater_level_percentage_/10);
+        short_frame.push_back(0x08);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        short_frame.push_back(0x00);
+        uint8_t checksum = calculateChecksum(short_frame);
+        short_frame.push_back(checksum);
+        
+        this->uart_->write_array(short_frame.data(), short_frame.size());
+        ESP_LOGD(TAG, "Sent short frame to set level %u%%", this->heater_level_percentage_);
+      }
+    }
+  }
 
   // Handle Heater Control based on internal state
 //   if (heater_requested_on_) {
@@ -159,8 +264,10 @@ void VevorHeater::process_frame(const std::vector<uint8_t> &frame) {
     if (this->short_frame_state_text_sensor_) {
       if (requested_state == 0x02) {
         this->short_frame_state_text_sensor_->publish_state("Off");
+      } else if (requested_state == 0x05) {
+        this->short_frame_state_text_sensor_->publish_state("Set Off");
       } else if (requested_state == 0x06) {
-        this->short_frame_state_text_sensor_->publish_state("Start");
+        this->short_frame_state_text_sensor_->publish_state("Set On");
       } else if (requested_state == 0x08) {
         this->short_frame_state_text_sensor_->publish_state("Running");
       } else {
@@ -189,6 +296,7 @@ void VevorHeater::process_frame(const std::vector<uint8_t> &frame) {
 
     // Byte 5: State (0x00: off, 0x01: glow plug pre heat, 0x02: ignited, 0x03: stable combustion, 0x04: stoping, cooling) [state]
     uint8_t state = read_uint8(frame, 5);
+    this->state_ = static_cast<VevorHeaterState>(state);
     if (this->state_sensor_) {
       this->state_sensor_->publish_state(state);
       ESP_LOGD(TAG, "Long Frame - State: %u", state);
@@ -337,12 +445,14 @@ void VevorHeater::dump_config() {
 float VevorHeater::get_setup_priority() const { return setup_priority::DATA; }
 
 // Public method to set heater on/off
-void VevorHeater::set_heater_on(bool on) {
-  if (this->heater_requested_on_ == on) {
-    return; // No change
-  }
-  this->heater_requested_on_ = on;
-  ESP_LOGD(TAG, "Heater set to %s", on ? "ON" : "OFF");
+void VevorHeater::set_heater_on() {
+  this->heater_requested_on_ = true;
+  ESP_LOGD(TAG, "Heater set to ON");
+}
+
+void VevorHeater::set_heater_off() {
+  this->heater_requested_on_ = false;
+  ESP_LOGD(TAG, "Heater set to OFF");
 }
 
 // Public method to set heater level

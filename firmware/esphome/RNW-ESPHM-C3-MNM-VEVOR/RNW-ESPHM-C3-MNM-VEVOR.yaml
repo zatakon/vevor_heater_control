@@ -189,39 +189,26 @@ switch:
     optimistic: true
     turn_on_action:
       - lambda: |-
-          id(vevor_heater).set_heater_on(true);
+          id(vevor_heater).set_heater_on();
     turn_off_action:
       - lambda: |-
-          id(vevor_heater).set_heater_on(false);
+          id(vevor_heater).set_heater_off();
 
 # Define the Heater Level Slider (Number) Outside the VevorHeater Component
 number:
   - platform: template
     name: "Heater Level"
     id: heater_level
-    min_value: 0
+    min_value: 10
     max_value: 100
-    step: 1
+    step: 10
     unit_of_measurement: "%"
     icon: "mdi:percent"
     optimistic: true
     set_action:
       - lambda: |-
           id(vevor_heater).set_heater_level(x);
-    # No need for update_action since it's controlled externally
-
-    # Heater Level Sensor (Number Component)
-  - platform: template
-    name: "${friendly_name}: Heater Level Status"
-    id: vevor_heater_heater_level_status
-    optimistic: true
-    min_value: 0
-    max_value: 100
-    step: 1
-    unit_of_measurement: "%"
-    # Optional: Reflect the current heater level if needed
-    # Implement as needed
-
+    
 sensor:
   # BATTERY VOLTAGE
   - platform: template
