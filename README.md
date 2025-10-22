@@ -29,7 +29,11 @@ Half duplex communication using NPN, PNP transistors and EN pin driving them.
 The CPU in the Vevor controller is most likely 5V tolerant, unlike our ESP32. I created a simple circuit for safe connection between the Vevor bus and my ESP32.
 
 ### 4.2. Connection to ESP32
-This is a simple schematic of how I connected my ESP32 to the bus.
+This is a simple schematic of how I connected my ESP32 to the bus. \
+If you have 5V input on your board, you can connect VBUS (red cable) directly to that and not use linear power supply. \
+**Double check transistors** pinout. \
+Feel free to use any pin for TX and RX.
+
 ![Connection ESP32 to Vevor](docs/images/vevor_heater_esp32.PNG)
 
 ## 5. Software
