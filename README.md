@@ -4,37 +4,49 @@ Vevor diesel heater control project
 I bought a Vevor diesel heater and put it into my workshop with the intention to keep the temperature above zero during winter. There is a project for communication with Chinese heaters, but this broadly used protocol is unfortunately not used in Vevor ones. Because there was no solution on how to connect Vevor to my Home Assistant ecosystem, I needed to do it by myself.
 
 ## 2. Current Status of the Project
-The project is now ready to use. You need your hardware for connecting to the bus. Then you can open a terminal in the location of 
+The project is now ready to use for all who have some experience with ESPHome. 
+
+### 2.1 HW
+This is a simple schematic of how I connected my ESP32 to the bus. \
+Be careful and connect the RX transistor to the 3.3V rail, not 5V. \
+**Double check the transistors'** pinout. \
+Feel free to use any pin for TX and RX.
+
+![Connection ESP32 to Vevor](docs/images/vevor_heater_esp32.PNG)
+
+### 2.2 SW
+
+1. Open terminal in project folder
 ```
 firmware/esphome/vevor_heater_example
 ```
-Change for your board configuration and run it
+
+2. Install the ESPHome library using pip
+```
+pip install esphome
+```
+3. Change the config RNW-ESPHM-C3-MNM-VEVOR/RNW-ESPHM-C3-MNM-VEVOR.yaml to match your board configuration and just run it using this command
 ```bash
 esphome run vevor_heater_example
 ```
-In the folder firmware/esphome/RNW-ESPHOME-C3-MNM-VEVOR there is a project for my board with more settings.
+
+
+The project for my board is located in the folder firmware/esphome/RNW-ESPHOME-C3-MNM-VEVOR. There are more settings than you need and no temperature sensor. Add one if you want to. 
 
 ![ESPhome view](docs/images/home_assistant_view.png)
 ![ESPhome view](docs/images/home_assistant_plot.png)
 
-## 4. Hardware
-The bus is open drain. Basic voltage is approximately 4V and very noisy (3.3 - 6V). Don't connect directly to any MCU without protection, there is a risk that magic smoke will escape...
+A more easy-to-use solution is in the "work in progress" state. I will try to get to it soon. 
+
+## 4. Hardware background
+The bus is open drain. The basic voltage is approximately 4V and very noisy (3.3 - 6V). Don't connect directly to any MCU without protection; there is a risk that the magic smoke will escape...
 
 Captured communication looks like this:
 ![picoscope communication](docs/communication/Capture.PNG)
 
-### 4.1. Controller
-Hardware seems to be very similar as described by [Ray Jones](https://gitlab.com/mrjones.id.au/bluetoothheater/-/blob/master/Documentation/V9%20-%20Hacking%20the%20Chinese%20Diesel%20Heater%20Communications%20Protocol.pdf?ref_type=heads)
-Half duplex communication using NPN, PNP transistors and EN pin driving them. 
+The hardware seems to be very similar to that described by [Ray Jones](https://gitlab.com/mrjones.id.au/bluetoothheater/-/blob/master/Documentation/V9%20-%20Hacking%20the%20Chinese%20Diesel%20Heater%20Communications%20Protocol.pdf?ref_type=heads)
+Half-duplex communication using NPN, PNP transistors and an EN pin driving them. 
 The CPU in the Vevor controller is most likely 5V tolerant, unlike our ESP32. I created a simple circuit for safe connection between the Vevor bus and my ESP32.
-
-### 4.2. Connection to ESP32
-This is a simple schematic of how I connected my ESP32 to the bus. \
-If you have 5V input on your board, you can connect VBUS (red cable) directly to that and not use linear power supply. \
-**Double check transistors** pinout. \
-Feel free to use any pin for TX and RX.
-
-![Connection ESP32 to Vevor](docs/images/vevor_heater_esp32.PNG)
 
 ## 5. Software
 The controller sends a command to the main unit every second. The unit sends back the current status.
@@ -101,13 +113,25 @@ Baud rate is 4.8 kbaud.
 | 55:   | 100%      | 1-254      | Checksum
 
 ### 5.2.3. Plot
-Use the Python script software/plot_frame.py to visualize values in the frame. You can just run it, the needed data are included in docs. It looks like this:
+Use the Python script software/plot_frame.py to visualize values in the frame. You can just run it; the needed data are included in docs. It looks like this:
 
 ![Frame plot](docs/images/frame_plot.png)
 
-## 6. Ready to Use Device
+## 6. Help needed
+A couple of things are missing: 
+- altitude compensation
+  - should be kind of easy to get from the frame. I have no motivation to do it now :-D
+- error reading
+  - complicated for me because my device works just fine and I don't want to cause errors. Nevertheless, at least some of them should be easy to get (low battery voltage...?). If someone does it, please let me know and I will implement it.
+- device compatibility
+  - I have no idea if all Vevor heaters use the same protocol. There is a new generation of Vevor diesel heaters with CO measurement. If someone has it and has tried it, let me know if it works.
+
+Anyway, feel free to make "pull requests" for anything you add to the code please.  
+
+## 7. Ready to Use Device
 In case there would be interest in the units which could be used as replacements for basic ones, I am open to this option. But even if I don't need to earn money on this, the units would be comparable in price to the whole diesel heater. But if approximately 60 USD + shipping would make sense for you, feel free to contact me or join the project.
 
-In the future, I will add a small display, buttons, and low power mode.
+Edit 22.10.2025: There were a couple of requests for that. I will try to produce a batch of ~20 pieces in the second half of November. But my plans are rarely going according to plan.  
+If I manage, I will add a small display, temperature sensor, buttons, and low power mode.
 
 j.meindl@seznam.cz
