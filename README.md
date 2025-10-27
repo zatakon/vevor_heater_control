@@ -10,7 +10,8 @@ The project is now ready to use for all who have some experience with ESPHome.
 This is a simple schematic of how I connected my ESP32 to the bus. \
 Be careful and connect the RX transistor to the 3.3V rail, not 5V. \
 **Double check the transistors'** pinout. \
-Feel free to use any pin for TX and RX.
+Feel free to use any pin for TX and RX. \
+**Put pullup resistor between data line and 5V**
 
 ![Connection ESP32 to Vevor](docs/images/vevor_heater_esp32.PNG)
 
