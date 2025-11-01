@@ -144,10 +144,12 @@ A couple of things are missing:
 
 Anyway, feel free to make "pull requests" for anything you add to the code please.  
 
-## 7. Ready to Use Device
-In case there would be interest in the units which could be used as replacements for basic ones, I am open to this option. But even if I don't need to earn money on this, the units would be comparable in price to the whole diesel heater. But if approximately 60 USD + shipping would make sense for you, feel free to contact me or join the project.
+## 7. Ready to Use Device - canceled
+~~In case there would be interest in the units which could be used as replacements for basic ones, I am open to this option. But even if I don't need to earn money on this, the units would be comparable in price to the whole diesel heater. But if approximately 60 USD + shipping would make sense for you, feel free to contact me or join the project.~~
 
-Edit 22.10.2025: There were a couple of requests for that. I will try to produce a batch of ~20 pieces in the second half of November. But my plans are rarely going according to plan.  
-If I manage, I will add a small display, temperature sensor, buttons, and low power mode.
+~~Edit 22.10.2025: There were a couple of requests for that. I will try to produce a batch of ~20 pieces in the second half of November. But my plans are rarely going according to plan.  
+If I manage, I will add a small display, temperature sensor, buttons, and low power mode.~~
+
+**Edit 1.11.2025:** I investigated all possible ways to provide ready-to-use boards. Unfortunately, CE certification is (really) expensive, and there is no legal way to sell such devices without it. Therefore, **ready-made PCBs will not be available.**
 
 j.meindl@seznam.cz
