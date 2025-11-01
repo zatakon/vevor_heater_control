@@ -1,6 +1,21 @@
 # Vevor Heater Control
 Vevor diesel heater control project
 
+---
+
+>## ⚠️ IMPORTANT: You Probably Want the Other Repository!
+>
+>**This repository is for protocol reverse engineering and research purposes only.**
+>
+>**If you want a ready-to-use ESPHome library for your Vevor heater, please visit:**
+>### 👉 **[https://github.com/zatakon/esphome-vevor-heater](https://github.com/zatakon/esphome-vevor-heater)** 👈
+>
+>The `esphome-vevor-heater` repository contains a complete, user-friendly ESPHome custom component that you can easily integrate into your Home Assistant setup.
+
+---
+
+## Background
+
 I bought a Vevor diesel heater and put it into my workshop with the intention to keep the temperature above zero during winter. There is a project for communication with Chinese heaters, but this broadly used protocol is unfortunately not used in Vevor ones. Because there was no solution on how to connect Vevor to my Home Assistant ecosystem, I needed to do it by myself.
 
 ## 2. Current Status of the Project
