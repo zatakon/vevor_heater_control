@@ -71,12 +71,18 @@ void VevorHeater::update() {
   if (now - last_send_time >= 1000) {
     last_send_time = now;
     
-    std::vector<uint8_t> short_frame;
-    // if heater is requested to be off
-    if (!heater_requested_on_) {
-      if (this->state_ == VevorHeaterState::OFF) {
-        return;
-      } else if (this->state_ != VevorHeaterState::STOPPING_COOLING) {
+    // Only send frames if heater is not already off and stable
+    // This allows continued communication during cooldown phase
+    bool should_send_frame = true;
+    if (!heater_requested_on_ && this->state_ == VevorHeaterState::OFF) {
+      should_send_frame = false;
+    }
+    
+    if (should_send_frame) {
+      std::vector<uint8_t> short_frame;
+      // if heater is requested to be off
+      if (!heater_requested_on_) {
+        if (this->state_ != VevorHeaterState::STOPPING_COOLING) {
         // Send short frame to turn heater OFF
         short_frame.push_back(0xAA); 
         short_frame.push_back(0x66); 
@@ -169,6 +175,7 @@ void VevorHeater::update() {
         ESP_LOGD(TAG, "Sent short frame to set level %u%%", this->heater_level_percentage_);
       }
     }
+    }
   }
 
   // Handle Heater Control based on internal state
@@ -232,6 +239,24 @@ void VevorHeater::update() {
 void VevorHeater::process_frame(const std::vector<uint8_t> &frame) {
   if (frame.empty()) {
     ESP_LOGW(TAG, "Empty frame received.");
+    return;
+  }
+
+  // Check for frame start byte
+  if (frame[0] != 0xAA) {
+    ESP_LOGW(TAG, "Invalid frame start byte: 0x%02X", frame[0]);
+    return;
+  }
+
+  // Silently ignore controller frame echoes (our own transmissions)
+  if (frame.size() > 1 && frame[1] == 0x66) {
+    ESP_LOGVV(TAG, "Ignoring controller frame echo");
+    return;
+  }
+
+  // Check for heater ID
+  if (frame.size() > 1 && frame[1] != 0x77) {
+    ESP_LOGW(TAG, "Invalid device ID: 0x%02X", frame[1]);
     return;
   }
 
