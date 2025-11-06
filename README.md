@@ -1,4 +1,4 @@
-<img width="170" height="17" alt="image" src="https://github.com/user-attachments/assets/d693b2f0-3d16-45e3-8885-9252ebb7c690" /># Vevor Heater Control
+# Vevor Heater Control
 Vevor diesel heater control project
 
 ---
@@ -80,12 +80,12 @@ Baud rate is 4.8 kbaud.
 | 6:    | 0%        | 0x00       | Unknown
 | 7:    | 0%        | 0x00       | Unknown
 | 8:    | 100%      | 1-10       | Power level [level]
-| 9:    | 90%       | 2, 6, 8    | Requested state (0x02: off, 0x06: start, 0x08: running) [state]
+| 9:    | 90%       | 2, 5, 6, 8 | Requested state (0x02: off, 0x05: cooling down, 0x06: start, 0x08: running) [state]
 | 10:   | 0%        | 0x00       | Unknown
 | 11:   | 0%        | 0x00       | Unknown
 | 12:   | 0%        | 0x00       | Unknown
 | 13:   | 0%        | 0x00       | Unknown
-| 14:   | 100%      | 1-255      | Checksum
+| 14:   | 100%      | 1-255      | Checksum (sum of byte 2+3+8+9)
 
 ### 5.2 Communication Main Unit -> Controller
 | Byte  | Certainty | Values     | Comment
