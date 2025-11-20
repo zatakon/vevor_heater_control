@@ -80,12 +80,12 @@ Baud rate is 4.8 kbaud.
 | 6:    | 0%        | 0x00       | Unknown
 | 7:    | 0%        | 0x00       | Unknown
 | 8:    | 100%      | 1-10       | Power level [level]
-| 9:    | 90%       | 2, 6, 8    | Requested state (0x02: off, 0x06: start, 0x08: running) [state]
+| 9:    | 90%       | 2, 5, 6, 8 | Requested state (0x02: off, 0x05: cooling down, 0x06: start, 0x08: running) [state]
 | 10:   | 0%        | 0x00       | Unknown
 | 11:   | 0%        | 0x00       | Unknown
 | 12:   | 0%        | 0x00       | Unknown
 | 13:   | 0%        | 0x00       | Unknown
-| 14:   | 100%      | 1-255      | Checksum
+| 14:   | 100%      | 1-255      | Checksum (sum of byte 2+3+8+9)
 
 ### 5.2 Communication Main Unit -> Controller
 | Byte  | Certainty | Values     | Comment
@@ -97,7 +97,7 @@ Baud rate is 4.8 kbaud.
 | 4:    | 80%       | 0-1        | All 1, last one 0 | Heater enabled?
 | 5:    | 99%       | 0x00-0x04  | State (0x00: off, 0x01: glow plug pre-heat, 0x02: ignited, 0x03: stable combustion, 0x04: stopping, cooling) [state]
 | 6:    | 100%      | 0x01-0x0A  | Power level [level]
-| 7:    | 0%        | 0x00       | Unknown
+| 7:    | 90%       | 0x00-0x09  | Error reported by Main Unit to Controller (0x00: no error, 0x01: E10 - startup fail, 0x02: E08 - check fuel level, 0x03: E01 - supply voltage overrun, 0x04: E04 - ?, 0x05: E05 - ?, 0x06: E04 - Fuel pump failure, 0x07: E06 - Fan failure,  0x08: E03 - Check ignition, 0x09: E05 - Overheat)
 | 8:    | 0%        | 0x00, 0x03 | 0x03 if running, 0x00 if stopped (just last one is 0)
 | 9:    | 0%        | 0x00, 0xFB | 0xFB if running, 0x00 if stopped (just last one is 0)
 | 10:   | 0%        | 0x00       | Unknown
