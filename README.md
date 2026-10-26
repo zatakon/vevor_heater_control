@@ -80,12 +80,15 @@ Baud rate is 4.8 kbaud.
 | 6:    | 0%        | 0x00       | Unknown
 | 7:    | 0%        | 0x00       | Unknown
 | 8:    | 100%      | 1-10       | Power level [level]
-| 9:    | 90%       | 2, 5, 6, 8 | Requested state (0x02: off, 0x05: cooling down, 0x06: start, 0x08: running) [state]
+| 9:    | 90%       | 2, 5, 6, 8 | Requested state (0x02: off, 0x05: stop - sent once together with command 0x06, then 0x02 while cooling down, 0x06: start, 0x08: running) [state]
 | 10:   | 0%        | 0x00       | Unknown
 | 11:   | 0%        | 0x00       | Unknown
 | 12:   | 0%        | 0x00       | Unknown
 | 13:   | 0%        | 0x00       | Unknown
-| 14:   | 100%      | 1-255      | Checksum (sum of byte 2+3+8+9)
+| 14:   | 0%        | 0x00       | Unknown
+| 15:   | 100%      | 1-255      | Checksum (sum of bytes 2-14 mod 256, in practice byte 2+3+8+9)
+
+The total frame length is the length field + 5: 16 bytes from the controller, 56 bytes from the heater. With checksum = sum of bytes 2 to n-2 mod 256, all 974 frames in `docs/communication/log_start_running_stop.txt` match.
 
 ### 5.2 Communication Main Unit -> Controller
 | Byte  | Certainty | Values     | Comment
@@ -106,7 +109,7 @@ Baud rate is 4.8 kbaud.
 | 13:   | 40%       | 0-12       | Glow plug current [A]
 | 14:   | 50%       | 0-1        | Cooling down [0/1]
 | 15:   | 30%       | 0-16       | Fan voltage? Some temperature? [V]
-| 16-17:| 99%       | 480,1630   | Heat exchanger temperature [°C * 100]
+| 16-17:| 99%       | 480,1630   | Heat exchanger temperature [°C * 10], signed
 | 18:   | 0%        | 0x00       | Unknown
 | 19:   | 0%        | 0x00       | Unknown
 | 20-21:| 90%       | 0-325      | State duration [s]
@@ -140,7 +143,7 @@ A couple of things are missing:
 - error reading
   - complicated for me because my device works just fine and I don't want to cause errors. Nevertheless, at least some of them should be easy to get (low battery voltage...?). If someone does it, please let me know and I will implement it.
 - device compatibility
-  - I have no idea if all Vevor heaters use the same protocol. There is a new generation of Vevor diesel heaters with CO measurement. If someone has it and has tried it, let me know if it works.
+  - Tested with the XMZ-D2 family (2 kW altitude-compensated and 5 kW). Not all Vevor heaters use this protocol: ZM8001, CY-32 and an 8 kW unit with a blue LCD controller use a PWM-style pulse code on the same data wire, see [kellerman/vevor_pwm](https://github.com/kellerman/vevor_pwm) and [alxkalb/vevor-8kw-diesel-heater-esphome](https://github.com/alxkalb/vevor-8kw-diesel-heater-esphome). Some Bluetooth / altitude-compensated units use a 2400 baud variant starting with 0xA8 (#1). There is also a new generation of Vevor diesel heaters with CO measurement. If someone has it and has tried it, let me know if it works.
 
 Anyway, feel free to make "pull requests" for anything you add to the code please.  
 
