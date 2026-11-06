@@ -79,14 +79,16 @@ Baud rate is 4.8 kbaud.
 | 5:    | 0%        | 0x00       | Unknown
 | 6:    | 0%        | 0x00       | Unknown
 | 7:    | 0%        | 0x00       | Unknown
-| 8:    | 100%      | 1-10       | Power level [level]
-| 9:    | 90%       | 2, 5, 6, 8 | Requested state (0x02: off, 0x05: stop - sent once together with command 0x06, then 0x02 while cooling down, 0x06: start, 0x08: running) [state]
+| 8:    | 100%      | 1-10       | Power level [level] (0x02 in the priming start frame, see below)
+| 9:    | 90%       | 2, 3, 5, 6, 8 | Requested state (0x02: off, 0x03: fuel pump priming - sent together with command 0x06, 0x05: stop - sent once together with command 0x06, then 0x02 while cooling down, 0x06: start, 0x08: running) [state]
 | 10:   | 0%        | 0x00       | Unknown
 | 11:   | 0%        | 0x00       | Unknown
 | 12:   | 0%        | 0x00       | Unknown
 | 13:   | 0%        | 0x00       | Unknown
 | 14:   | 0%        | 0x00       | Unknown
 | 15:   | 100%      | 1-255      | Checksum (sum of bytes 2-14 mod 256, in practice byte 2+3+8+9)
+
+Fuel pump priming (#8, captured by @Hurricos): the original controller offers it only right after power-up, by holding the left button. It shows a 300 s countdown and the fuel pump runs at about 6.3 Hz. The frame that starts it is `AA 66 06 0B 00 00 00 00 02 03 00 00 00 00 00 16` (command 0x06, byte 8 0x02, requested state 0x03). The next frames in the capture are the usual stop frame (command 0x06, state 0x05) and a status request with state 0x02. What the controller sends during the 300 s and how priming ends is not confirmed yet.
 
 The total frame length is the length field + 5: 16 bytes from the controller, 56 bytes from the heater. With checksum = sum of bytes 2 to n-2 mod 256, all 974 frames in `docs/communication/log_start_running_stop.txt` match.
 
@@ -108,7 +110,7 @@ The total frame length is the length field + 5: 16 bytes from the controller, 56
 | 12:   | 0%        | 0x00       | Unknown
 | 13:   | 40%       | 0-12       | Glow plug current [A]
 | 14:   | 50%       | 0-1        | Cooling down [0/1]
-| 15:   | 30%       | 0-16       | Fan voltage? Some temperature? [V]
+| 15:   | 90%       | 0-16       | Fan PWM duty cycle [1/16, 16 = 100 %] (#9)
 | 16-17:| 99%       | 480,1630   | Heat exchanger temperature [°C * 10], signed
 | 18:   | 0%        | 0x00       | Unknown
 | 19:   | 0%        | 0x00       | Unknown
